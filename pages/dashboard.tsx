@@ -1,38 +1,97 @@
 import { useEffect, useState } from "react";
 
 export default function Dashboard() {
-  const [schedule, setSchedule] = useState<any[]>([]);
+  const [scheduleData, setScheduleData] = useState([]);
+  const [todayString, setTodayString] = useState("");
 
   useEffect(() => {
-    async function fetchSchedule() {
-      const res = await fetch("https://script.google.com/macros/s/AKfycbwnBx60lf-KT6D-oY4x04qbs4SD9Uq2wSMxBeytgbB6VwwJoaksPaLdNk6A2UURbxlDEQ/exec");
-      const allData = await res.json();
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = (today.getMonth() + 1).toString().padStart(2, "0");
+    const dd = today.getDate().toString().padStart(2, "0");
+    setTodayString(`${mm}/${dd}`);
 
-      const today = new Date().toLocaleDateString("ja-JP", {
-        month: "numeric",
-        day: "numeric",
+    fetch(
+      "https://script.google.com/macros/s/AKfycbwnBx60lf-KT6D-oY4x04qbs4SD9Uq2wSMxBeytgbB6VwwJoaksPaLdNk6A2UURbxlDEQ/exec"
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        setScheduleData(data);
       });
-
-      const filtered = allData.filter((row: any) => row["日付・時間帯"]?.startsWith(today));
-      setSchedule(filtered);
-    }
-
-    fetchSchedule();
   }, []);
 
+  // 日付順に並び替え（安全策）
+  const sortedData = [...scheduleData].sort((a, b) =>
+    a["日付・時間帯"].localeCompare(b["日付・時間帯"])
+  );
+
+  // todayを含むインデックス取得
+  const todayIndex = sortedData.findIndex((row) =>
+    row["日付・時間帯"].includes(todayString)
+  );
+
+  const displayData = sortedData.slice(
+    Math.max(todayIndex - 1, 0),
+    Math.min(todayIndex + 2 + 1, sortedData.length)
+  );
+
   return (
-    <main className="p-4">
-      <h1 className="text-xl font-bold mb-4">今日の学習予定</h1>
-      {schedule.length === 0 ? (
-        <p>該当なし</p>
-      ) : (
-        schedule.map((row, idx) => (
-          <div key={idx} className="mb-4">
-            <p className="font-semibold">・{row["日付・時間帯"]}：{row["詳しい学習内容"]}</p>
-            <p>{row["学習の進め方"]}</p>
-          </div>
-        ))
-      )}
+    <main>
+      <h1>今月の学習予定</h1>
+      <div className="card-list">
+        {displayData.map((row, i) => {
+          const isToday = row["日付・時間帯"].includes(todayString);
+          return (
+            <div key={i} className={`card ${isToday ? "today" : "future"}`}>
+              <h2>{row["日付・時間帯"]}</h2>
+              <p>{row["詳しい学習内容"]}</p>
+              <p className="sub">{row["学習の進め方"]}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      <style jsx>{`
+        main {
+          padding: 2rem;
+          font-family: sans-serif;
+        }
+        h1 {
+          font-size: 1.8rem;
+          margin-bottom: 1.5rem;
+        }
+        .card-list {
+          display: flex;
+          gap: 1rem;
+          flex-wrap: wrap;
+        }
+        .card {
+          flex: 1 1 300px;
+          padding: 1rem;
+          border-radius: 12px;
+          border: 1px solid #ddd;
+          background: #f5f5f5;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        .card h2 {
+          font-size: 1.2rem;
+          margin: 0 0 0.5rem 0;
+        }
+        .card.today {
+          background: #ffffff;
+          border: 2px solid #4285f4;
+          box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+        }
+        .card.future {
+          color: #999;
+          background: #fafafa;
+        }
+        .sub {
+          font-size: 0.9rem;
+          margin-top: 0.5rem;
+          color: #666;
+        }
+      `}</style>
     </main>
   );
 }
