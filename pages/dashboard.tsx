@@ -3,10 +3,10 @@ import { useEffect, useState } from "react";
 export default function Dashboard() {
   const [scheduleData, setScheduleData] = useState([]);
   const [todayString, setTodayString] = useState("");
+  const [animatedIndex, setAnimatedIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const today = new Date();
-    const yyyy = today.getFullYear();
     const mm = (today.getMonth() + 1).toString().padStart(2, "0");
     const dd = today.getDate().toString().padStart(2, "0");
     setTodayString(`${mm}/${dd}`);
@@ -20,12 +20,10 @@ export default function Dashboard() {
       });
   }, []);
 
-  // 日付順に並び替え（安全策）
   const sortedData = [...scheduleData].sort((a, b) =>
     a["日付・時間帯"].localeCompare(b["日付・時間帯"])
   );
 
-  // todayを含むインデックス取得
   const todayIndex = sortedData.findIndex((row) =>
     row["日付・時間帯"].includes(todayString)
   );
@@ -35,14 +33,33 @@ export default function Dashboard() {
     Math.min(todayIndex + 2 + 1, sortedData.length)
   );
 
+  useEffect(() => {
+    if (todayIndex !== -1) {
+      setTimeout(() => setAnimatedIndex(todayIndex), 300); // 遅延でアニメーション開始
+    }
+  }, [todayIndex]);
+
   return (
     <main>
       <h1>今月の学習予定</h1>
       <div className="card-list">
         {displayData.map((row, i) => {
           const isToday = row["日付・時間帯"].includes(todayString);
+          const isPast = i < 1;
+          const isFuture = i > 1;
+          const className = isToday
+            ? "card today"
+            : isPast
+            ? "card past"
+            : "card future";
+
+          const animate = isToday && i === animatedIndex;
+
           return (
-            <div key={i} className={`card ${isToday ? "today" : "future"}`}>
+            <div
+              key={i}
+              className={`${className} ${animate ? "animate" : ""}`}
+            >
               <h2>{row["日付・時間帯"]}</h2>
               <p>{row["詳しい学習内容"]}</p>
               <p className="sub">{row["学習の進め方"]}</p>
@@ -70,26 +87,44 @@ export default function Dashboard() {
           padding: 1rem;
           border-radius: 12px;
           border: 1px solid #ddd;
-          background: #f5f5f5;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+          transition: transform 0.3s ease;
         }
         .card h2 {
           font-size: 1.2rem;
           margin: 0 0 0.5rem 0;
         }
         .card.today {
-          background: #ffffff;
-          border: 2px solid #4285f4;
+          background: #e3f2fd;
+          border-left: 6px solid #4285f4;
           box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
         }
         .card.future {
-          color: #999;
-          background: #fafafa;
+          background: #ffffff;
+          color: #333;
+        }
+        .card.past {
+          background: #f0f0f0;
+          color: #888;
         }
         .sub {
           font-size: 0.9rem;
           margin-top: 0.5rem;
           color: #666;
+        }
+        .animate {
+          animation: hoverPop 0.4s ease-in-out;
+        }
+
+        @keyframes hoverPop {
+          0% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.05);
+          }
+          100% {
+            transform: scale(1);
+          }
         }
       `}</style>
     </main>
