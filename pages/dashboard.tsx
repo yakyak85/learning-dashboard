@@ -30,7 +30,7 @@ export default function Dashboard() {
 
   const displayData = sortedData.slice(
     Math.max(todayIndex - 1, 0),
-    Math.min(todayIndex + 2 + 1, sortedData.length)
+    Math.min(todayIndex + 3, sortedData.length)
   );
 
   useEffect(() => {
