@@ -1,119 +1,107 @@
 import { useEffect, useState } from "react";
-import Head from "next/head";
-import nProgress from "nprogress";
 
 export default function Dashboard() {
-  const [schedule, setSchedule] = useState([]);
+  const [schedule, setSchedule] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchSchedule = async () => {
+    async function fetchData() {
       try {
-        nProgress.start();
         const res = await fetch("https://script.google.com/macros/s/AKfycbwnBx60lf-KT6D-oY4x04qbs4SD9Uq2wSMxBeytgbB6VwwJoaksPaLdNk6A2UURbxlDEQ/exec");
-        const data = await res.json();
+        const json = await res.json();
 
-        // 日付部分だけ取り出してフィルタ
-        const getDayLabel = (offset = 0) => {
-          const d = new Date();
-          d.setDate(d.getDate() + offset);
-          return `${d.getMonth() + 1}/${d.getDate()}`;
-        };
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${parseInt(mm)}/${parseInt(dd)}`;
 
-        const today = getDayLabel(0);
-        const dayLabels = [getDayLabel(-1), today, getDayLabel(1), getDayLabel(2)];
+        // 4日分（昨日・今日・明日・明後日）を抽出
+        const targetDates = Array.from({ length: 4 }, (_, i) => {
+          const date = new Date(today);
+          date.setDate(date.getDate() - 1 + i);
+          return `${date.getMonth() + 1}/${date.getDate()}`;
+        });
 
-        const filtered = data.filter((item) =>
-          dayLabels.some((label) => item["日付・時間帯"]?.startsWith(label))
+        const filtered = json.filter((item: any) =>
+          targetDates.some(d => item["日付・時間帯"].startsWith(d))
         );
 
-        setSchedule(filtered);
-      } catch (e) {
-        console.error("取得エラー:", e);
-      } finally {
-        setLoading(false);
-        nProgress.done();
-      }
-    };
+        // 日付・時間帯順でソート
+        filtered.sort((a: any, b: any) => a["日付・時間帯"].localeCompare(b["日付・時間帯"]));
 
-    fetchSchedule();
+        setSchedule(filtered);
+        setLoading(false);
+      } catch (e) {
+        console.error("Fetch error", e);
+        setLoading(false);
+      }
+    }
+
+    fetchData();
   }, []);
 
-  const getCardStyle = (dateLabel) => {
-    const today = new Date();
-    const todayStr = `${today.getMonth() + 1}/${today.getDate()}`;
-
-    if (dateLabel.startsWith(todayStr)) return "card current";
-
-    const target = new Date(`${today.getFullYear()}/${dateLabel.split(" ")[0]}`);
-    return target < today ? "card past" : "card future";
-  };
+  const today = new Date();
+  const mmdd = `${today.getMonth() + 1}/${today.getDate()}`;
 
   return (
-    <>
-      <Head>
-        <title>今月の学習予定</title>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.css" />
-      </Head>
-      <main>
-        <h1>今月の学習予定</h1>
-        {loading ? (
-          <p>読み込み中...</p>
-        ) : (
-          <div className="card-container">
-            {schedule.map((item, i) => (
-              <div key={i} className={getCardStyle(item["日付・時間帯"]) + (getCardStyle(item["日付・時間帯"]) === "card current" ? " animate" : "")}> 
+    <div className="container">
+      <h1>今月の学習予定</h1>
+      {loading ? <p>読み込み中...</p> : (
+        <div className="cards">
+          {schedule.map((item, i) => {
+            const isToday = item["日付・時間帯"].startsWith(mmdd);
+            return (
+              <div
+                key={i}
+                className={`card ${isToday ? "today" : item["日付・時間帯"] < mmdd ? "past" : "future"}`}
+              >
                 <h2>{item["日付・時間帯"]}</h2>
                 <p>{item["詳しい学習内容"]}</p>
                 <p>{item["学習の進め方"]}</p>
               </div>
-            ))}
-          </div>
-        )}
-      </main>
+            );
+          })}
+        </div>
+      )}
 
       <style jsx>{`
-        main {
+        .container {
           padding: 2rem;
-          font-family: sans-serif;
+          max-width: 600px;
+          margin: 0 auto;
         }
-        h1 {
-          font-size: 1.5rem;
-          font-weight: bold;
-        }
-        .card-container {
+        .cards {
           display: flex;
           flex-direction: column;
-          gap: 1rem;
-          margin-top: 1rem;
+          gap: 1.5rem;
         }
         .card {
-          border-radius: 0.75rem;
-          padding: 1rem;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-          transition: transform 0.3s ease;
-          background-color: #fff;
+          padding: 1.2rem;
+          border-radius: 12px;
+          border: 1px solid #ddd;
+          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+          background: white;
+          transition: transform 0.3s ease, background 0.3s ease;
         }
-        .card.current {
-          border: 2px solid #3b82f6;
-          background-color: #e0f2fe;
+        .past {
+          background: #f1f1f1;
+          color: #777;
         }
-        .card.past {
-          background-color: #f3f4f6;
-          color: #6b7280;
+        .today {
+          background: #e6f0ff;
+          border-color: #0070f3;
+          color: #003366;
+          animation: popIn 0.8s ease;
         }
-        .card.future {
-          background-color: #ffffff;
+        .future {
+          background: #fff;
         }
-        .animate {
-          animation: pulse 1s ease-in-out;
-        }
-        @keyframes pulse {
-          0% { transform: scale(1); }
-          50% { transform: scale(1.02); }
-          100% { transform: scale(1); }
+        @keyframes popIn {
+          0% { transform: scale(0.97); opacity: 0.6; }
+          100% { transform: scale(1); opacity: 1; }
         }
       `}</style>
-    </>
+    </div>
   );
 }
