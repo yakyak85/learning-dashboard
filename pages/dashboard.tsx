@@ -16,7 +16,7 @@ export default function Dashboard() {
         const dd = String(today.getDate()).padStart(2, '0');
         const todayStr = `${parseInt(mm)}/${parseInt(dd)}`;
 
-        // 4日分（昨日・今日・明日・明後日）を抽出
+        // 昨日・今日・明日・明後日分を表示
         const targetDates = Array.from({ length: 4 }, (_, i) => {
           const date = new Date(today);
           date.setDate(date.getDate() - 1 + i);
@@ -27,7 +27,6 @@ export default function Dashboard() {
           targetDates.some(d => item["日付・時間帯"].startsWith(d))
         );
 
-        // 日付・時間帯順でソート
         filtered.sort((a: any, b: any) => a["日付・時間帯"].localeCompare(b["日付・時間帯"]));
 
         setSchedule(filtered);
@@ -51,10 +50,12 @@ export default function Dashboard() {
         <div className="cards">
           {schedule.map((item, i) => {
             const isToday = item["日付・時間帯"].startsWith(mmdd);
+            const isPast = new Date(`${today.getFullYear()}/${item["日付・時間帯"].split(' ')[0]}`) < today;
+            const isFuture = new Date(`${today.getFullYear()}/${item["日付・時間帯"].split(' ')[0]}`) > today;
             return (
               <div
                 key={i}
-                className={`card ${isToday ? "today" : item["日付・時間帯"] < mmdd ? "past" : "future"}`}
+                className={`card ${isToday ? "today" : isPast ? "past" : "future"}`}
               >
                 <h2>{item["日付・時間帯"]}</h2>
                 <p>{item["詳しい学習内容"]}</p>
@@ -68,7 +69,7 @@ export default function Dashboard() {
       <style jsx>{`
         .container {
           padding: 2rem;
-          max-width: 600px;
+          max-width: 800px;
           margin: 0 auto;
         }
         .cards {
@@ -77,29 +78,32 @@ export default function Dashboard() {
           gap: 1.5rem;
         }
         .card {
-          padding: 1.2rem;
+          padding: 1.5rem;
           border-radius: 12px;
           border: 1px solid #ddd;
-          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-          background: white;
-          transition: transform 0.3s ease, background 0.3s ease;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+          background: #fff;
+          transition: transform 0.3s ease;
+        }
+        .card h2 {
+          font-size: 1.1rem;
+          font-weight: 600;
+          margin-bottom: 0.5rem;
+        }
+        .card p {
+          margin: 0.25rem 0;
         }
         .past {
-          background: #f1f1f1;
-          color: #777;
+          background-color: #f3f4f6;
+          color: #9ca3af;
         }
         .today {
-          background: #e6f0ff;
-          border-color: #0070f3;
-          color: #003366;
-          animation: popIn 0.8s ease;
+          background-color: #e0f2ff;
+          border: 2px solid #3b82f6;
+          box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
         }
         .future {
-          background: #fff;
-        }
-        @keyframes popIn {
-          0% { transform: scale(0.97); opacity: 0.6; }
-          100% { transform: scale(1); opacity: 1; }
+          background-color: #ffffff;
         }
       `}</style>
     </div>
