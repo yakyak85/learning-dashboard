@@ -1,63 +1,58 @@
 import { useEffect, useState } from "react";
 
 export default function Dashboard() {
-  const [schedule, setSchedule] = useState<any[]>([]);
+  const [schedule, setSchedule] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const res = await fetch("https://script.google.com/macros/s/AKfycbwnBx60lf-KT6D-oY4x04qbs4SD9Uq2wSMxBeytgbB6VwwJoaksPaLdNk6A2UURbxlDEQ/exec");
-        const json = await res.json();
-
+    fetch("https://script.google.com/macros/s/AKfycbwnBx60lf-KT6D-oY4x04qbs4SD9Uq2wSMxBeytgbB6VwwJoaksPaLdNk6A2UURbxlDEQ/exec")
+      .then((res) => res.json())
+      .then((data) => {
         const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        const dd = String(today.getDate()).padStart(2, '0');
-        const todayStr = `${parseInt(mm)}/${parseInt(dd)}`;
-
-        // 昨日・今日・明日・明後日分を表示
-        const targetDates = Array.from({ length: 4 }, (_, i) => {
-          const date = new Date(today);
-          date.setDate(date.getDate() - 1 + i);
-          return `${date.getMonth() + 1}/${date.getDate()}`;
+        const todayStr = today.toLocaleDateString("ja-JP", {
+          month: "numeric",
+          day: "numeric",
         });
 
-        const filtered = json.filter((item: any) =>
-          targetDates.some(d => item["日付・時間帯"].startsWith(d))
-        );
-
-        filtered.sort((a: any, b: any) => a["日付・時間帯"].localeCompare(b["日付・時間帯"]));
+        const filtered = data.filter((item) => {
+          const [date] = item["日付・時間帯"].split(" ");
+          return date === todayStr || date === getRelativeDate(today, -1) || date === getRelativeDate(today, 1);
+        });
 
         setSchedule(filtered);
         setLoading(false);
-      } catch (e) {
-        console.error("Fetch error", e);
-        setLoading(false);
-      }
-    }
-
-    fetchData();
+      });
   }, []);
 
-  const today = new Date();
-  const mmdd = `${today.getMonth() + 1}/${today.getDate()}`;
+  function getRelativeDate(baseDate, offsetDays) {
+    const d = new Date(baseDate);
+    d.setDate(d.getDate() + offsetDays);
+    return d.toLocaleDateString("ja-JP", {
+      month: "numeric",
+      day: "numeric",
+    });
+  }
+
+  const todayStr = new Date().toLocaleDateString("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+  });
 
   return (
-    <div className="container">
+    <main>
       <h1>今月の学習予定</h1>
-      {loading ? <p>読み込み中...</p> : (
-        <div className="cards">
+      {loading ? (
+        <p>読み込み中...</p>
+      ) : (
+        <div className="card-list">
           {schedule.map((item, i) => {
-            const isToday = item["日付・時間帯"].startsWith(mmdd);
-            const isPast = new Date(`${today.getFullYear()}/${item["日付・時間帯"].split(' ')[0]}`) < today;
-            const isFuture = new Date(`${today.getFullYear()}/${item["日付・時間帯"].split(' ')[0]}`) > today;
+            const [date, time] = item["日付・時間帯"].split(" ");
+            const isToday = date === todayStr;
             return (
-              <div
-                key={i}
-                className={`card ${isToday ? "today" : isPast ? "past" : "future"}`}
-              >
-                <h2>{item["日付・時間帯"]}</h2>
+              <div key={i} className={`card ${isToday ? "today" : date < todayStr ? "past" : "future"}`}>
+                <h2>
+                  {date} {time}
+                </h2>
                 <p>{item["詳しい学習内容"]}</p>
                 <p>{item["学習の進め方"]}</p>
               </div>
@@ -67,45 +62,59 @@ export default function Dashboard() {
       )}
 
       <style jsx>{`
-        .container {
+        main {
           padding: 2rem;
-          max-width: 800px;
-          margin: 0 auto;
+          font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+          background: #f4f6f8;
+          min-height: 100vh;
         }
-        .cards {
+        h1 {
+          font-size: 1.8rem;
+          margin-bottom: 1.5rem;
+        }
+        .card-list {
           display: flex;
           flex-direction: column;
-          gap: 1.5rem;
+          gap: 1.2rem;
         }
         .card {
-          padding: 1.5rem;
-          border-radius: 12px;
-          border: 1px solid #ddd;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-          background: #fff;
-          transition: transform 0.3s ease;
+          background: white;
+          border-radius: 1rem;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          padding: 1.2rem;
+          transition: all 0.3s ease;
         }
         .card h2 {
-          font-size: 1.1rem;
+          font-size: 1.2rem;
+          margin: 0 0 0.5rem;
           font-weight: 600;
-          margin-bottom: 0.5rem;
         }
         .card p {
-          margin: 0.25rem 0;
-        }
-        .past {
-          background-color: #f3f4f6;
-          color: #9ca3af;
+          margin: 0.3rem 0;
+          font-size: 0.95rem;
         }
         .today {
-          background-color: #e0f2ff;
-          border: 2px solid #3b82f6;
-          box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+          background: #e0f0ff;
+          border: 2px solid #3399ff;
+          animation: pulse 1s ease-out;
+        }
+        .past {
+          background: #eeeeee;
+          color: #888;
         }
         .future {
-          background-color: #ffffff;
+          background: #ffffff;
+        }
+
+        @keyframes pulse {
+          0% {
+            transform: scale(0.98);
+          }
+          100% {
+            transform: scale(1);
+          }
         }
       `}</style>
-    </div>
+    </main>
   );
 }
