@@ -7,14 +7,10 @@ const openai = new OpenAI({
 });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const { input } = req.body;
-  if (!input) {
-    return res.status(400).json({ error: "No input provided" });
-  }
+  if (!input) return res.status(400).json({ error: "No input provided" });
 
   const prompt = `
 あなたは学習支援AIです。以下の学習内容に基づいて、理解度を確認するための問題を5つ出題してください。
@@ -39,14 +35,18 @@ ${input}
       temperature: 0.7,
     });
 
-    // 🔍 OpenAIのレスポンスをログに出力
-    console.log("OpenAI completion response:", completion);
+    console.log("OpenAI response:", completion);
 
-    const raw = completion.choices[0].message?.content;
-    const parsed = JSON.parse(raw || "[]");
+    const raw = completion.choices?.[0]?.message?.content;
+    if (!raw) {
+      console.error("No message content returned from OpenAI");
+      return res.status(500).json({ error: "OpenAI response format invalid" });
+    }
+
+    const parsed = JSON.parse(raw);
     res.status(200).json(parsed);
   } catch (error) {
-    console.error("Error in generate-questions API:", error);
+    console.error("Error in API handler:", error);
     res.status(500).json({ error: "Failed to generate questions" });
   }
 }
