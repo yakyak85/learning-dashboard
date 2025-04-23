@@ -1,148 +1,48 @@
-// /pages/report.tsx
-import { useState } from "react";
+// /pages/api/generate-questions.ts
+import type { NextApiRequest, NextApiResponse } from "next";
+import { OpenAI } from "openai";
 
-export default function ReportPage() {
-  const [input, setInput] = useState("");
-  const [questions, setQuestions] = useState<any[]>([]);
-  const [current, setCurrent] = useState(0);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState("");
-  const [loading, setLoading] = useState(false);
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-  const handleGenerate = async () => {
-    if (!input.trim()) return;
-    setLoading(true);
-    setSelected(null);
-    setFeedback("");
-    setCurrent(0);
-    try {
-      const res = await fetch("/api/generate-questions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input }),
-      });
-      const data = await res.json();
-      setQuestions(data.slice(0, 5));
-    } catch (e) {
-      alert("問題の生成に失敗しました");
-    } finally {
-      setLoading(false);
-    }
-  };
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const handleAnswer = (choice: string) => {
-    if (selected) return;
-    setSelected(choice);
-    const correct = questions[current].correct;
-    const explanation = questions[current].explanation;
-    const isCorrect = choice === correct;
-    setFeedback(`${isCorrect ? "⭕️ 正解" : "❌ 不正解"}：${explanation}`);
+  const { input } = req.body;
+  if (!input) return res.status(400).json({ error: "No input provided" });
 
-    setTimeout(() => {
-      setSelected(null);
-      setFeedback("");
-      setCurrent((prev) => prev + 1);
-    }, 2500);
-  };
+  const prompt = `
+あなたは学習サポートAIです。
+以下の学習内容を読んで、それに関する4択問題を5問作成してください。
 
-  const q = questions[current];
+# 出力形式はJSON
+[
+  {
+    "text": "問題文",
+    "options": ["選択肢A", "選択肢B", "選択肢C", "選択肢D"],
+    "correctIndex": 正解の選択肢番号（0〜3の整数）,
+    "explanation": "正解の簡単な理由（1〜2文）"
+  },
+  ...
+]
 
-  return (
-    <div className="container">
-      <h1>学習報告</h1>
-      {!questions.length ? (
-        <>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="#今日の学習報告 から始めてください"
-          />
-          <button onClick={handleGenerate} disabled={loading}>
-            {loading ? "生成中..." : "問題を生成"}
-          </button>
-        </>
-      ) : current < questions.length ? (
-        <div className="quiz">
-          <p className="q">{`Q${current + 1}. ${q.text}`}</p>
-          <ul>
-            {q.choices.map((c: string, i: number) => (
-              <li
-                key={i}
-                className={`choice ${selected === c ? "selected" : ""}`}
-                onClick={() => handleAnswer(c)}
-              >
-                {c}
-              </li>
-            ))}
-          </ul>
-          <p className="feedback">{feedback}</p>
-        </div>
-      ) : (
-        <p>全問終了しました！お疲れさまでした。</p>
-      )}
+# 学習内容:
+${input}
+`;
 
-      <style>{`
-        .container {
-          padding: 16px;
-          max-width: 600px;
-          margin: auto;
-          font-family: 'Hiragino Kaku Gothic ProN', sans-serif;
-        }
-        textarea {
-          width: 100%;
-          height: 120px;
-          margin-top: 12px;
-          padding: 8px;
-          font-size: 16px;
-        }
-        button {
-          margin-top: 12px;
-          padding: 10px 20px;
-          font-size: 16px;
-          background: #3b82f6;
-          color: white;
-          border: none;
-          border-radius: 4px;
-        }
-        .quiz {
-          margin-top: 24px;
-        }
-        .q {
-          font-weight: bold;
-          margin-bottom: 12px;
-        }
-        ul {
-          list-style: none;
-          padding: 0;
-        }
-        .choice {
-          background: #f1f5f9;
-          margin-bottom: 8px;
-          padding: 10px;
-          border-radius: 6px;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-        .choice:hover {
-          background: #e0f2fe;
-        }
-        .selected {
-          background: #bae6fd;
-        }
-        .feedback {
-          margin-top: 12px;
-          font-size: 14px;
-          color: #333;
-        }
-        @media (max-width: 600px) {
-          .container {
-            padding: 12px;
-          }
-          textarea {
-            font-size: 14px;
-          }
-        }
-      `}</style>
-    </div>
-  );
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+    });
+
+    const raw = completion.choices[0].message?.content;
+    const parsed = JSON.parse(raw || "[]");
+    res.status(200).json(parsed);
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Failed to generate questions" });
+  }
 }
