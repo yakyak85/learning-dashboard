@@ -1,9 +1,12 @@
+// /pages/dashboard.tsx
 import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 
 export default function Dashboard() {
   const [schedule, setSchedule] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [monthlyCost, setMonthlyCost] = useState(0);
+  const router = useRouter();
 
   useEffect(() => {
     async function fetchData() {
@@ -61,6 +64,7 @@ export default function Dashboard() {
               <div
                 key={i}
                 className={`card ${isToday ? "today" : isPast ? "past" : "future"}`}
+                onClick={() => router.push(`/report?row=${i + 3}`)}
               >
                 <h2>{item["日付・時間帯"]}</h2>
                 <p>{item["詳しい学習内容"]}</p>
@@ -91,6 +95,7 @@ export default function Dashboard() {
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
           background: #fff;
           transition: transform 0.3s ease;
+          cursor: pointer;
         }
         .card h2 {
           font-size: 1.1rem;
