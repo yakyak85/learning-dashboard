@@ -3,92 +3,107 @@ import { useState } from "react";
 export default function ReportPage() {
   const [input, setInput] = useState("");
   const [questions, setQuestions] = useState<any[]>([]);
-  const [current, setCurrent] = useState(0);
-  const [answer, setAnswer] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleGenerate = async () => {
     if (!input.trim()) return;
     setLoading(true);
-    setFeedback("");
-    setAnswer(null);
-    setCurrent(0);
+    setQuestions([]);
+
     try {
       const res = await fetch("/api/generate-questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ input }),
       });
+
       const data = await res.json();
-      setQuestions(data);
-    } catch (e) {
-      console.error("Error generating questions", e);
+
+      // 安全確認：全てに選択肢があるか
+      const validated = Array.isArray(data) ? data.filter(q => q.choices && q.choices.length === 4) : [];
+      setQuestions(validated);
+    } catch (error) {
+      console.error("生成失敗:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAnswer = (choice: string) => {
-    const q = questions[current];
-    setAnswer(choice);
-    if (choice === q.correct) {
-      setFeedback("正解です！\n理由: " + q.explanation);
-    } else {
-      setFeedback("不正解です。\n正解: " + q.correct + "\n理由: " + q.explanation);
-    }
-    setTimeout(() => {
-      setAnswer(null);
-      setFeedback("");
-      setCurrent((prev) => prev + 1);
-    }, 3000);
-  };
-
-  const q = questions[current];
-
   return (
-    <div className="p-4 max-w-xl mx-auto font-sans">
-      <h1 className="text-2xl font-bold mb-4">学習内容の入力</h1>
+    <div style={styles.container}>
+      <h1 style={styles.heading}>学習内容の入力</h1>
       <textarea
-        className="w-full border rounded p-2 mb-4"
-        rows={4}
+        style={styles.textarea}
+        rows={5}
+        placeholder="#今日の学習報告 を書いてください"
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        placeholder="#今日の学習報告 から始めて入力してください"
       />
-      <button
-        onClick={handleGenerate}
-        className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
-        disabled={loading}
-      >
+      <button style={styles.button} onClick={handleGenerate} disabled={loading}>
         {loading ? "生成中..." : "問題を生成"}
       </button>
 
-      {q && (
-        <div className="mt-6">
-          <h2 className="text-xl font-bold mb-2">Q{current + 1}: {q.text}</h2>
-          <ul className="space-y-2">
-            {q.choices.map((c: string, i: number) => (
-              <li key={i}>
-                <button
-                  onClick={() => handleAnswer(c)}
-                  disabled={!!answer}
-                  className={`w-full text-left px-3 py-2 rounded border ${
-                    answer === c ? "bg-gray-200" : "bg-white"
-                  }`}
-                >
-                  {c}
-                </button>
-              </li>
-            ))}
-          </ul>
-          {feedback && <p className="mt-4 whitespace-pre-wrap">{feedback}</p>}
+      {questions.length > 0 && (
+        <div style={styles.questionList}>
+          <h2 style={styles.subheading}>生成された問題</h2>
+          {questions.map((q, idx) => (
+            <div key={idx} style={styles.card}>
+              <p><strong>Q{idx + 1}:</strong> {q.text}</p>
+              <ul>
+                {q.choices?.map((choice: string, i: number) => (
+                  <li key={i}>{String.fromCharCode(65 + i)}. {choice}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
-      )}
-
-      {!q && questions.length > 0 && (
-        <p className="mt-6 text-green-600 font-semibold">全ての問題が終了しました！</p>
       )}
     </div>
   );
 }
+
+const styles: { [key: string]: React.CSSProperties } = {
+  container: {
+    padding: "1rem",
+    fontFamily: "'Noto Sans JP', sans-serif",
+    maxWidth: "600px",
+    margin: "0 auto",
+  },
+  heading: {
+    fontSize: "1.5rem",
+    fontWeight: "bold",
+    marginBottom: "1rem",
+  },
+  textarea: {
+    width: "100%",
+    padding: "0.5rem",
+    fontSize: "1rem",
+    borderRadius: "8px",
+    border: "1px solid #ccc",
+    marginBottom: "1rem",
+    fontFamily: "'Noto Sans JP', sans-serif",
+  },
+  button: {
+    padding: "0.6rem 1.2rem",
+    fontSize: "1rem",
+    borderRadius: "6px",
+    border: "none",
+    backgroundColor: "#3b82f6",
+    color: "#fff",
+    cursor: "pointer",
+  },
+  questionList: {
+    marginTop: "2rem",
+  },
+  subheading: {
+    fontSize: "1.2rem",
+    fontWeight: "bold",
+    marginBottom: "1rem",
+  },
+  card: {
+    padding: "1rem",
+    marginBottom: "1rem",
+    backgroundColor: "#f3f4f6",
+    borderRadius: "8px",
+  },
+};
