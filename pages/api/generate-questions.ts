@@ -7,34 +7,29 @@ const openai = new OpenAI({
 });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
   const { input } = req.body;
-  if (!input) return res.status(400).json({ error: "No input provided" });
+  if (!input) {
+    return res.status(400).json({ error: "No input provided" });
+  }
 
   const prompt = `
 あなたは学習支援AIです。以下の学習内容に基づいて、理解度を確認するための4択問題を5問作成してください。
-
-出力形式は必ず以下のJSON形式にしてください：
+JSON形式で以下のように出力してください（"choices"は必ず4つ、"correct"は選択肢のテキストと一致するように）：
 
 [
   {
-    "text": "問題文をここに",
-    "correct": "正解の選択肢（例：データのばらつきを示す指標）",
-    "explanation": "なぜそれが正解なのかを簡潔に説明",
-    "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4"]
-  },
-  ...（合計5問）
+    "text": "問題文",
+    "choices": ["選択肢A", "選択肢B", "選択肢C", "選択肢D"],
+    "correct": "正しい選択肢のテキスト",
+    "explanation": "正解の理由"
+  }
 ]
 
-条件：
-- 各問題は学習内容に関係する内容で構成してください。
-- 各選択肢はもっともらしく、受験者が迷いそうな表現にしてください。
-- 「誤答1」「選択肢A」のような機械的ラベルは使わず、自然な日本語を使ってください。
-- 正解は "correct" に含め、"options" の中にも必ず含めてください。
-- JSON構造を厳守し、その他の文字列は含めないでください。
-
-学習内容：
+学習内容:
 ${input}
 `;
 
