@@ -1,109 +1,148 @@
+// /pages/report.tsx
 import { useState } from "react";
 
 export default function ReportPage() {
   const [input, setInput] = useState("");
   const [questions, setQuestions] = useState<any[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
 
-  const handleGenerate = async () => {
+  const handleSubmit = async () => {
     if (!input.trim()) return;
     setLoading(true);
-    setQuestions([]);
-
     try {
+      const logRes = await fetch("/api/log-input", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input, datetime: new Date().toISOString() }),
+      });
+
       const res = await fetch("/api/generate-questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ input }),
       });
-
       const data = await res.json();
-
-      // 安全確認：全てに選択肢があるか
-      const validated = Array.isArray(data) ? data.filter(q => q.choices && q.choices.length === 4) : [];
-      setQuestions(validated);
-    } catch (error) {
-      console.error("生成失敗:", error);
+      setQuestions(data);
+      setCurrentIndex(0);
+      setSelected(null);
+      setFeedback("");
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div style={styles.container}>
-      <h1 style={styles.heading}>学習内容の入力</h1>
-      <textarea
-        style={styles.textarea}
-        rows={5}
-        placeholder="#今日の学習報告 を書いてください"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-      />
-      <button style={styles.button} onClick={handleGenerate} disabled={loading}>
-        {loading ? "生成中..." : "問題を生成"}
-      </button>
+  const currentQuestion = questions[currentIndex];
 
-      {questions.length > 0 && (
-        <div style={styles.questionList}>
-          <h2 style={styles.subheading}>生成された問題</h2>
-          {questions.map((q, idx) => (
-            <div key={idx} style={styles.card}>
-              <p><strong>Q{idx + 1}:</strong> {q.text}</p>
-              <ul>
-                {q.choices?.map((choice: string, i: number) => (
-                  <li key={i}>{String.fromCharCode(65 + i)}. {choice}</li>
-                ))}
-              </ul>
+  const handleAnswer = (choice: string) => {
+    setSelected(choice);
+    if (!currentQuestion) return;
+    const isCorrect = choice === currentQuestion.correct;
+    setFeedback(
+      isCorrect ? "正解です！\n" + currentQuestion.explanation : "不正解です。\n" + currentQuestion.explanation
+    );
+  };
+
+  const handleNext = () => {
+    if (currentIndex + 1 < questions.length) {
+      setCurrentIndex(currentIndex + 1);
+      setSelected(null);
+      setFeedback("");
+    } else {
+      setDone(true);
+    }
+  };
+
+  return (
+    <div className="container">
+      <h1>学習報告と確認問題</h1>
+      {!questions.length && (
+        <>
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            rows={5}
+            placeholder="#今日の学習報告"
+          />
+          <button onClick={handleSubmit} disabled={loading}>
+            {loading ? "生成中..." : "問題を生成"}
+          </button>
+        </>
+      )}
+
+      {questions.length > 0 && !done && (
+        <div className="question-block">
+          <h2>Q{currentIndex + 1}: {currentQuestion?.text}</h2>
+          <ul>
+            {currentQuestion.choices.map((choice: string, idx: number) => (
+              <li key={idx}>
+                <button
+                  className={`choice ${selected === choice ? "selected" : ""}`}
+                  onClick={() => handleAnswer(choice)}
+                  disabled={!!selected}
+                >
+                  {choice}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {feedback && (
+            <div className="feedback">
+              <p>{feedback}</p>
+              <button onClick={handleNext}>次の問題へ</button>
             </div>
-          ))}
+          )}
         </div>
       )}
+
+      {done && <p>全ての問題が終了しました。お疲れ様でした！</p>}
+
+      <style jsx>{`
+        .container {
+          padding: 1rem;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+          max-width: 600px;
+          margin: auto;
+        }
+        textarea {
+          width: 100%;
+          padding: 1rem;
+          font-size: 1rem;
+          margin-bottom: 1rem;
+        }
+        button {
+          padding: 0.5rem 1rem;
+          font-size: 1rem;
+          margin-top: 0.5rem;
+        }
+        .question-block {
+          margin-top: 2rem;
+        }
+        ul {
+          list-style: none;
+          padding: 0;
+        }
+        .choice {
+          display: block;
+          width: 100%;
+          text-align: left;
+          padding: 0.75rem;
+          border: 1px solid #ccc;
+          margin-bottom: 0.5rem;
+          background: #f9f9f9;
+        }
+        .selected {
+          background-color: #cfe9ff;
+        }
+        .feedback {
+          margin-top: 1rem;
+        }
+      `}</style>
     </div>
   );
 }
-
-const styles: { [key: string]: React.CSSProperties } = {
-  container: {
-    padding: "1rem",
-    fontFamily: "'Noto Sans JP', sans-serif",
-    maxWidth: "600px",
-    margin: "0 auto",
-  },
-  heading: {
-    fontSize: "1.5rem",
-    fontWeight: "bold",
-    marginBottom: "1rem",
-  },
-  textarea: {
-    width: "100%",
-    padding: "0.5rem",
-    fontSize: "1rem",
-    borderRadius: "8px",
-    border: "1px solid #ccc",
-    marginBottom: "1rem",
-    fontFamily: "'Noto Sans JP', sans-serif",
-  },
-  button: {
-    padding: "0.6rem 1.2rem",
-    fontSize: "1rem",
-    borderRadius: "6px",
-    border: "none",
-    backgroundColor: "#3b82f6",
-    color: "#fff",
-    cursor: "pointer",
-  },
-  questionList: {
-    marginTop: "2rem",
-  },
-  subheading: {
-    fontSize: "1.2rem",
-    fontWeight: "bold",
-    marginBottom: "1rem",
-  },
-  card: {
-    padding: "1rem",
-    marginBottom: "1rem",
-    backgroundColor: "#f3f4f6",
-    borderRadius: "8px",
-  },
-};
