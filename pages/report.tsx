@@ -50,7 +50,7 @@ export default function ReportPage() {
       {questions.length > 0 && (
         <div className="mt-6 space-y-4">
           <h2 className="text-xl font-semibold">確認問題</h2>
-          {questions.map((q, idx) => (
+          {questions.map((q: any, idx: number) => (
             <div key={idx} className="border p-3 rounded">
               <p className="font-medium">Q{idx + 1}: {q.text}</p>
               <p>正解: {q.correct}</p>
