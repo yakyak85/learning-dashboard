@@ -20,18 +20,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 [
   {
     "text": "問題文をここに",
-    "correct": "正解の選択肢（例：選択肢A）",
-    "explanation": "なぜそれが正解なのか簡潔に説明",
-    "options": ["選択肢A", "選択肢B", "選択肢C", "選択肢D"]
+    "correct": "正解の選択肢（例：データのばらつきを示す指標）",
+    "explanation": "なぜそれが正解なのかを簡潔に説明",
+    "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4"]
   },
-  ...
+  ...（合計5問）
 ]
 
 条件：
 - 各問題は学習内容に関係する内容で構成してください。
-- 各選択肢は内容的にもっともらしいものにしてください。
+- 各選択肢はもっともらしく、受験者が迷いそうな表現にしてください。
+- 「誤答1」「選択肢A」のような機械的ラベルは使わず、自然な日本語を使ってください。
 - 正解は "correct" に含め、"options" の中にも必ず含めてください。
-- 項目名やJSON形式は必ず厳密に守ってください（日本語訳などは不要です）。
+- JSON構造を厳守し、その他の文字列は含めないでください。
 
 学習内容：
 ${input}
@@ -44,11 +45,11 @@ ${input}
       temperature: 0.7,
     });
 
-    const raw = completion.choices[0].message?.content || "[]";
-    const parsed = JSON.parse(raw);
+    const raw = completion.choices[0].message?.content;
+    const parsed = JSON.parse(raw || "[]");
     res.status(200).json(parsed);
   } catch (error) {
-    console.error("Error generating questions:", error);
+    console.error("Error:", error);
     res.status(500).json({ error: "Failed to generate questions" });
   }
 }
