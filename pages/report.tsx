@@ -4,143 +4,143 @@ import { useState } from "react";
 export default function ReportPage() {
   const [input, setInput] = useState("");
   const [questions, setQuestions] = useState<any[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
 
-  const handleSubmit = async () => {
+  const handleGenerate = async () => {
     if (!input.trim()) return;
     setLoading(true);
+    setSelected(null);
+    setFeedback("");
+    setCurrent(0);
     try {
-      const logRes = await fetch("/api/log-input", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input, datetime: new Date().toISOString() }),
-      });
-
       const res = await fetch("/api/generate-questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ input }),
       });
       const data = await res.json();
-      setQuestions(data);
-      setCurrentIndex(0);
-      setSelected(null);
-      setFeedback("");
+      setQuestions(data.slice(0, 5));
     } catch (e) {
-      console.error(e);
+      alert("問題の生成に失敗しました");
     } finally {
       setLoading(false);
     }
   };
 
-  const currentQuestion = questions[currentIndex];
-
   const handleAnswer = (choice: string) => {
+    if (selected) return;
     setSelected(choice);
-    if (!currentQuestion) return;
-    const isCorrect = choice === currentQuestion.correct;
-    setFeedback(
-      isCorrect ? "正解です！\n" + currentQuestion.explanation : "不正解です。\n" + currentQuestion.explanation
-    );
-  };
+    const correct = questions[current].correct;
+    const explanation = questions[current].explanation;
+    const isCorrect = choice === correct;
+    setFeedback(`${isCorrect ? "⭕️ 正解" : "❌ 不正解"}：${explanation}`);
 
-  const handleNext = () => {
-    if (currentIndex + 1 < questions.length) {
-      setCurrentIndex(currentIndex + 1);
+    setTimeout(() => {
       setSelected(null);
       setFeedback("");
-    } else {
-      setDone(true);
-    }
+      setCurrent((prev) => prev + 1);
+    }, 2500);
   };
+
+  const q = questions[current];
 
   return (
     <div className="container">
-      <h1>学習報告と確認問題</h1>
-      {!questions.length && (
+      <h1>学習報告</h1>
+      {!questions.length ? (
         <>
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            rows={5}
-            placeholder="#今日の学習報告"
+            placeholder="#今日の学習報告 から始めてください"
           />
-          <button onClick={handleSubmit} disabled={loading}>
+          <button onClick={handleGenerate} disabled={loading}>
             {loading ? "生成中..." : "問題を生成"}
           </button>
         </>
-      )}
-
-      {questions.length > 0 && !done && (
-        <div className="question-block">
-          <h2>Q{currentIndex + 1}: {currentQuestion?.text}</h2>
+      ) : current < questions.length ? (
+        <div className="quiz">
+          <p className="q">{`Q${current + 1}. ${q.text}`}</p>
           <ul>
-            {currentQuestion.choices.map((choice: string, idx: number) => (
-              <li key={idx}>
-                <button
-                  className={`choice ${selected === choice ? "selected" : ""}`}
-                  onClick={() => handleAnswer(choice)}
-                  disabled={!!selected}
-                >
-                  {choice}
-                </button>
+            {q.choices.map((c: string, i: number) => (
+              <li
+                key={i}
+                className={`choice ${selected === c ? "selected" : ""}`}
+                onClick={() => handleAnswer(c)}
+              >
+                {c}
               </li>
             ))}
           </ul>
-          {feedback && (
-            <div className="feedback">
-              <p>{feedback}</p>
-              <button onClick={handleNext}>次の問題へ</button>
-            </div>
-          )}
+          <p className="feedback">{feedback}</p>
         </div>
+      ) : (
+        <p>全問終了しました！お疲れさまでした。</p>
       )}
 
-      {done && <p>全ての問題が終了しました。お疲れ様でした！</p>}
-
-      <style jsx>{`
+      <style>{`
         .container {
-          padding: 1rem;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+          padding: 16px;
           max-width: 600px;
           margin: auto;
+          font-family: 'Hiragino Kaku Gothic ProN', sans-serif;
         }
         textarea {
           width: 100%;
-          padding: 1rem;
-          font-size: 1rem;
-          margin-bottom: 1rem;
+          height: 120px;
+          margin-top: 12px;
+          padding: 8px;
+          font-size: 16px;
         }
         button {
-          padding: 0.5rem 1rem;
-          font-size: 1rem;
-          margin-top: 0.5rem;
+          margin-top: 12px;
+          padding: 10px 20px;
+          font-size: 16px;
+          background: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 4px;
         }
-        .question-block {
-          margin-top: 2rem;
+        .quiz {
+          margin-top: 24px;
+        }
+        .q {
+          font-weight: bold;
+          margin-bottom: 12px;
         }
         ul {
           list-style: none;
           padding: 0;
         }
         .choice {
-          display: block;
-          width: 100%;
-          text-align: left;
-          padding: 0.75rem;
-          border: 1px solid #ccc;
-          margin-bottom: 0.5rem;
-          background: #f9f9f9;
+          background: #f1f5f9;
+          margin-bottom: 8px;
+          padding: 10px;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+        .choice:hover {
+          background: #e0f2fe;
         }
         .selected {
-          background-color: #cfe9ff;
+          background: #bae6fd;
         }
         .feedback {
-          margin-top: 1rem;
+          margin-top: 12px;
+          font-size: 14px;
+          color: #333;
+        }
+        @media (max-width: 600px) {
+          .container {
+            padding: 12px;
+          }
+          textarea {
+            font-size: 14px;
+          }
         }
       `}</style>
     </div>
