@@ -1,148 +1,123 @@
-// /pages/report.tsx
 import { useState } from "react";
 
 export default function ReportPage() {
   const [input, setInput] = useState("");
   const [questions, setQuestions] = useState<any[]>([]);
-  const [current, setCurrent] = useState(0);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selected, setSelected] = useState<number | null>(null);
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleGenerate = async () => {
     if (!input.trim()) return;
     setLoading(true);
-    setSelected(null);
-    setFeedback("");
-    setCurrent(0);
+
     try {
       const res = await fetch("/api/generate-questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ input }),
       });
+
       const data = await res.json();
-      setQuestions(data.slice(0, 5));
-    } catch (e) {
-      alert("問題の生成に失敗しました");
+      setQuestions(data);
+      setCurrentIndex(0);
+      setSelected(null);
+      setFeedback("");
+    } catch (error) {
+      console.error("Error generating questions:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAnswer = (choice: string) => {
-    if (selected) return;
-    setSelected(choice);
-    const correct = questions[current].correct;
-    const explanation = questions[current].explanation;
-    const isCorrect = choice === correct;
-    setFeedback(`${isCorrect ? "⭕️ 正解" : "❌ 不正解"}：${explanation}`);
-
-    setTimeout(() => {
-      setSelected(null);
-      setFeedback("");
-      setCurrent((prev) => prev + 1);
-    }, 2500);
+  const handleAnswer = (index: number) => {
+    const q = questions[currentIndex];
+    setSelected(index);
+    const isCorrect = index === q.correctIndex;
+    setFeedback(isCorrect ? "✅ 正解です！" : `❌ 不正解。${q.explanation}`);
   };
 
-  const q = questions[current];
+  const handleNext = () => {
+    setCurrentIndex((prev) => prev + 1);
+    setSelected(null);
+    setFeedback("");
+  };
+
+  const current = questions[currentIndex];
 
   return (
-    <div className="container">
-      <h1>学習報告</h1>
-      {!questions.length ? (
-        <>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="#今日の学習報告 から始めてください"
-          />
-          <button onClick={handleGenerate} disabled={loading}>
-            {loading ? "生成中..." : "問題を生成"}
-          </button>
-        </>
-      ) : current < questions.length ? (
-        <div className="quiz">
-          <p className="q">{`Q${current + 1}. ${q.text}`}</p>
-          <ul>
-            {q.choices.map((c: string, i: number) => (
-              <li
-                key={i}
-                className={`choice ${selected === c ? "selected" : ""}`}
-                onClick={() => handleAnswer(c)}
-              >
-                {c}
+    <div style={{ padding: "1rem", fontFamily: "sans-serif", maxWidth: "600px", margin: "auto" }}>
+      <h1>学習内容を入力</h1>
+      <textarea
+        rows={4}
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="# 今日の学習報告 から始めて入力"
+        style={{ width: "100%", padding: "0.5rem", marginBottom: "1rem", fontSize: "16px" }}
+      />
+      <button
+        onClick={handleGenerate}
+        disabled={loading}
+        style={{
+          padding: "0.6rem 1rem",
+          backgroundColor: "#0070f3",
+          color: "#fff",
+          border: "none",
+          borderRadius: "6px",
+          cursor: "pointer",
+        }}
+      >
+        {loading ? "生成中..." : "問題を生成"}
+      </button>
+
+      {current && (
+        <div style={{ marginTop: "2rem" }}>
+          <h2 style={{ fontSize: "18px", marginBottom: "1rem" }}>Q{currentIndex + 1}: {current.text}</h2>
+          <ul style={{ listStyle: "none", padding: 0 }}>
+            {current.options.map((opt: string, i: number) => (
+              <li key={i} style={{ marginBottom: "0.5rem" }}>
+                <button
+                  onClick={() => handleAnswer(i)}
+                  disabled={selected !== null}
+                  style={{
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "0.5rem",
+                    border: "1px solid #ccc",
+                    borderRadius: "6px",
+                    backgroundColor: selected === i
+                      ? (i === current.correctIndex ? "#d1fae5" : "#fee2e2")
+                      : "#f9fafb",
+                    fontWeight: selected === i ? "bold" : "normal",
+                    cursor: selected === null ? "pointer" : "default",
+                  }}
+                >
+                  {String.fromCharCode(65 + i)}. {opt}
+                </button>
               </li>
             ))}
           </ul>
-          <p className="feedback">{feedback}</p>
-        </div>
-      ) : (
-        <p>全問終了しました！お疲れさまでした。</p>
-      )}
 
-      <style>{`
-        .container {
-          padding: 16px;
-          max-width: 600px;
-          margin: auto;
-          font-family: 'Hiragino Kaku Gothic ProN', sans-serif;
-        }
-        textarea {
-          width: 100%;
-          height: 120px;
-          margin-top: 12px;
-          padding: 8px;
-          font-size: 16px;
-        }
-        button {
-          margin-top: 12px;
-          padding: 10px 20px;
-          font-size: 16px;
-          background: #3b82f6;
-          color: white;
-          border: none;
-          border-radius: 4px;
-        }
-        .quiz {
-          margin-top: 24px;
-        }
-        .q {
-          font-weight: bold;
-          margin-bottom: 12px;
-        }
-        ul {
-          list-style: none;
-          padding: 0;
-        }
-        .choice {
-          background: #f1f5f9;
-          margin-bottom: 8px;
-          padding: 10px;
-          border-radius: 6px;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-        .choice:hover {
-          background: #e0f2fe;
-        }
-        .selected {
-          background: #bae6fd;
-        }
-        .feedback {
-          margin-top: 12px;
-          font-size: 14px;
-          color: #333;
-        }
-        @media (max-width: 600px) {
-          .container {
-            padding: 12px;
-          }
-          textarea {
-            font-size: 14px;
-          }
-        }
-      `}</style>
+          {feedback && <p style={{ marginTop: "1rem", fontWeight: "bold" }}>{feedback}</p>}
+          {selected !== null && currentIndex < questions.length - 1 && (
+            <button
+              onClick={handleNext}
+              style={{
+                marginTop: "1rem",
+                padding: "0.5rem 1rem",
+                backgroundColor: "#34d399",
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+              }}
+            >
+              次の問題へ
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
