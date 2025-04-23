@@ -1,62 +1,80 @@
+// /pages/report.tsx
 import { useState } from "react";
 
 export default function ReportPage() {
   const [input, setInput] = useState("");
-  const [questions, setQuestions] = useState([]);
+  const [questions, setQuestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGenerate = async () => {
+    console.log("✅ handleGenerate called");
+    if (!input.trim()) {
+      console.log("⚠️ 空の入力です");
+      return;
+    }
+
     setLoading(true);
-    setQuestions([]);
 
     try {
+      console.log("📝 ログを送信中...");
+      const logRes = await fetch("/api/log-input", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          input,
+          datetime: new Date().toISOString(),
+        }),
+      });
+      console.log("✅ ログ送信結果:", await logRes.json());
+
+      console.log("🎯 問題生成をリクエスト中...");
       const res = await fetch("/api/generate-questions", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ input }),
       });
 
       const data = await res.json();
+      console.log("✅ 生成された問題:", data);
       setQuestions(data);
     } catch (error) {
-      console.error("Error generating questions:", error);
+      console.error("❌ エラーが発生しました:", error);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">学習報告と確認問題</h1>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="学習した内容をここに入力..."
-          className="w-full border rounded p-2 h-32"
-        />
-        <button
-          type="submit"
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-          disabled={loading}
-        >
-          {loading ? "生成中..." : "問題を生成"}
-        </button>
-      </form>
+    <div className="p-6 max-w-2xl mx-auto">
+      <h1 className="text-xl font-bold mb-4">学習内容の入力</h1>
+      <textarea
+        className="w-full border p-2 rounded"
+        rows={4}
+        value={input}
+        onChange={(e) => {
+          console.log("✏️ 入力更新:", e.target.value);
+          setInput(e.target.value);
+        }}
+        placeholder="#今日の学習報告 から始めて入力してください"
+      />
+      <button
+        onClick={handleGenerate}
+        className="mt-4 bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
+        disabled={!input.trim() || loading}
+      >
+        {loading ? "生成中..." : "問題を生成"}
+      </button>
 
       {questions.length > 0 && (
-        <div className="mt-6 space-y-4">
-          <h2 className="text-xl font-semibold">確認問題</h2>
-          {questions.map((q: any, idx: number) => (
-            <div key={idx} className="border p-3 rounded">
-              <p className="font-medium">Q{idx + 1}: {q.text}</p>
-              <p>正解: {q.correct}</p>
-              <p className="text-sm text-gray-600">理由: {q.explanation}</p>
-            </div>
-          ))}
+        <div className="mt-6">
+          <h2 className="text-lg font-semibold mb-2">生成された問題</h2>
+          <ul className="space-y-4">
+            {questions.map((q, index) => (
+              <li key={index} className="border p-3 rounded shadow-sm">
+                <strong>Q{index + 1}:</strong> {q.text}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>
