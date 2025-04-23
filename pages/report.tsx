@@ -1,12 +1,15 @@
+// /pages/report.tsx
 import { useState } from "react";
 
 export default function ReportPage() {
   const [input, setInput] = useState("");
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const currentQuestion = questions[currentIndex];
 
   const handleGenerate = async () => {
     if (!input.trim()) return;
@@ -31,90 +34,104 @@ export default function ReportPage() {
     }
   };
 
-  const handleAnswer = (index: number) => {
-    const q = questions[currentIndex];
-    setSelected(index);
-    const isCorrect = index === q.correctIndex;
-    setFeedback(isCorrect ? "✅ 正解です！" : `❌ 不正解。${q.explanation}`);
+  const handleAnswer = (choice: string) => {
+    if (!currentQuestion) return;
+    setSelected(choice);
+    const isCorrect = choice === currentQuestion.correct;
+    setFeedback(isCorrect ? "⭕ 正解！" : `❌ 不正解。正解は：${currentQuestion.correct}\n理由：${currentQuestion.explanation}`);
   };
 
   const handleNext = () => {
-    setCurrentIndex((prev) => prev + 1);
-    setSelected(null);
-    setFeedback("");
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setSelected(null);
+      setFeedback("");
+    }
   };
 
-  const current = questions[currentIndex];
-
   return (
-    <div style={{ padding: "1rem", fontFamily: "sans-serif", maxWidth: "600px", margin: "auto" }}>
-      <h1>学習内容を入力</h1>
+    <div style={{ padding: "2rem", fontFamily: "'Hiragino Kaku Gothic ProN', Meiryo, sans-serif" }}>
+      <h1 style={{ fontSize: "1.5rem", fontWeight: "bold" }}>学習内容の入力</h1>
       <textarea
         rows={4}
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        placeholder="# 今日の学習報告 から始めて入力"
-        style={{ width: "100%", padding: "0.5rem", marginBottom: "1rem", fontSize: "16px" }}
+        placeholder="#今日の学習報告 から始めて入力してください"
+        style={{ width: "100%", padding: "1rem", marginTop: "1rem", borderRadius: "8px", border: "1px solid #ccc" }}
       />
       <button
         onClick={handleGenerate}
         disabled={loading}
-        style={{
-          padding: "0.6rem 1rem",
-          backgroundColor: "#0070f3",
-          color: "#fff",
-          border: "none",
-          borderRadius: "6px",
-          cursor: "pointer",
-        }}
+        style={{ marginTop: "1rem", backgroundColor: "#3b82f6", color: "white", padding: "0.5rem 1rem", borderRadius: "6px", border: "none", cursor: "pointer" }}
       >
         {loading ? "生成中..." : "問題を生成"}
       </button>
 
-      {current && (
+      {currentQuestion && (
         <div style={{ marginTop: "2rem" }}>
-          <h2 style={{ fontSize: "18px", marginBottom: "1rem" }}>Q{currentIndex + 1}: {current.text}</h2>
+          <h2 style={{ fontSize: "1.2rem", marginBottom: "1rem" }}>Q{currentIndex + 1}: {currentQuestion.text}</h2>
           <ul style={{ listStyle: "none", padding: 0 }}>
-            {current.options.map((opt: string, i: number) => (
-              <li key={i} style={{ marginBottom: "0.5rem" }}>
+            {currentQuestion.choices.map((choice: string, index: number) => (
+              <li key={index} style={{ marginBottom: "0.5rem" }}>
                 <button
-                  onClick={() => handleAnswer(i)}
+                  onClick={() => handleAnswer(choice)}
                   disabled={selected !== null}
                   style={{
                     width: "100%",
-                    textAlign: "left",
-                    padding: "0.5rem",
-                    border: "1px solid #ccc",
+                    padding: "0.75rem",
                     borderRadius: "6px",
-                    backgroundColor: selected === i
-                      ? (i === current.correctIndex ? "#d1fae5" : "#fee2e2")
-                      : "#f9fafb",
-                    fontWeight: selected === i ? "bold" : "normal",
-                    cursor: selected === null ? "pointer" : "default",
+                    backgroundColor: selected === choice ? (choice === currentQuestion.correct ? "#4ade80" : "#f87171") : "#f3f4f6",
+                    border: "1px solid #ccc",
+                    cursor: selected ? "default" : "pointer",
                   }}
                 >
-                  {String.fromCharCode(65 + i)}. {opt}
+                  {choice}
                 </button>
               </li>
             ))}
           </ul>
-
-          {feedback && <p style={{ marginTop: "1rem", fontWeight: "bold" }}>{feedback}</p>}
-          {selected !== null && currentIndex < questions.length - 1 && (
+          {feedback && <p style={{ marginTop: "1rem", whiteSpace: "pre-line" }}>{feedback}</p>}
+          {selected && currentIndex < questions.length - 1 && (
             <button
               onClick={handleNext}
-              style={{
-                marginTop: "1rem",
-                padding: "0.5rem 1rem",
-                backgroundColor: "#34d399",
-                color: "#fff",
-                border: "none",
-                borderRadius: "6px",
-                cursor: "pointer",
-              }}
+              style={{ marginTop: "1rem", backgroundColor: "#3b82f6", color: "white", padding: "0.5rem 1rem", borderRadius: "6px", border: "none" }}
             >
               次の問題へ
             </button>
+          )}
+
+          {selected && currentIndex === questions.length - 1 && (
+            <div style={{ marginTop: "2rem", textAlign: "center" }}>
+              <p style={{ fontWeight: "bold", fontSize: "1.2rem", marginBottom: "1rem" }}>
+                🎉 すべての問題が終了しました！
+              </p>
+              <button
+                onClick={async () => {
+                  try {
+                    await fetch("/api/log-input", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ input, datetime: new Date().toISOString() }),
+                    });
+                  } catch (e) {
+                    console.error("送信エラー:", e);
+                  } finally {
+                    window.location.href = "/dashboard";
+                  }
+                }}
+                style={{
+                  backgroundColor: "#3b82f6",
+                  color: "#fff",
+                  padding: "0.6rem 1.2rem",
+                  borderRadius: "8px",
+                  fontSize: "1rem",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                }}
+              >
+                学習記録を送信してトップに戻る
+              </button>
+            </div>
           )}
         </div>
       )}
