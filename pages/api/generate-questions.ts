@@ -7,13 +7,13 @@ const openai = new OpenAI({
 });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") return res.status(405).end("Method Not Allowed");
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const { input } = req.body;
-  if (!input) return res.status(400).json({ error: "Missing input" });
+  if (!input) return res.status(400).json({ error: "No input provided" });
 
   const prompt = `
-あなたは学習支援AIです。以下の学習内容に基づいて、理解度を確認するクイズを5問作成してください。
+あなたは学習支援AIです。以下の学習内容に基づいて、理解度を確認するための問題を5つ出題してください。
 JSON形式で以下のように出力してください：
 
 [
@@ -21,8 +21,7 @@ JSON形式で以下のように出力してください：
     "text": "問題文",
     "correct": "正解のテキスト",
     "explanation": "正解の理由を簡潔に"
-  },
-  ...
+  }
 ]
 
 学習内容:
@@ -36,16 +35,11 @@ ${input}
       temperature: 0.7,
     });
 
-    const raw = completion.choices[0].message?.content || "[]";
-    const jsonStart = raw.indexOf("[");
-    const questions = JSON.parse(raw.slice(jsonStart));
-
-    const totalTokens = completion.usage?.total_tokens || 0;
-    const costJpy = (totalTokens / 1000) * 0.0015 * 150; // GPT-3.5単価＆150円換算
-
-    res.status(200).json({ questions, costJpy });
+    const raw = completion.choices[0].message?.content;
+    const parsed = JSON.parse(raw || "[]");
+    res.status(200).json(parsed);
   } catch (error) {
-    console.error("GPT出題エラー:", error);
-    res.status(500).json({ error: "問題生成に失敗しました" });
+    console.error("Error:", error);
+    res.status(500).json({ error: "Failed to generate questions" });
   }
 }
