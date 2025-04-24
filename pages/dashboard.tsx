@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwnBx60lf-KT6D-oY4UZaKya0x3qG_U/exec"; // 必ず正しい URL に書き換えてください
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwnBx60lf-KT6D-oY4x04qbs4SD9Uq2wSMxBeytgbB6VwwJoaksPaLdNk6A2UURbxlDEQ/exec";
 
 export default function Dashboard() {
   const [schedule, setSchedule] = useState<any[]>([]);
@@ -17,8 +17,7 @@ export default function Dashboard() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         console.log("Fetched schedule JSON:", json);
-        // ▶︎ デバッグのためフィルタを外し、全件表示する
-        setSchedule(json);
+        setSchedule(json); // 全件表示して動作確認
       } catch (e: any) {
         console.error("Fetch error:", e);
         setError(e.message || "Unknown error");
