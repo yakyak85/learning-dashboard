@@ -1,7 +1,10 @@
-// /pages/report.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 
 export default function ReportPage() {
+  const router = useRouter();
+  const [row, setRow] = useState<number | null>(null);
+
   const [input, setInput] = useState("");
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -11,6 +14,17 @@ export default function ReportPage() {
   const [error, setError] = useState<string | null>(null);
 
   const currentQuestion = questions.length > 0 ? questions[currentIndex] : null;
+
+  // rowをURLパラメータから取得
+  useEffect(() => {
+    if (router.isReady) {
+      const rowParam = router.query.row;
+      if (rowParam) {
+        const parsed = parseInt(rowParam as string, 10);
+        if (!isNaN(parsed)) setRow(parsed);
+      }
+    }
+  }, [router.isReady, router.query.row]);
 
   const handleGenerate = async () => {
     if (!input.trim()) return;
@@ -25,7 +39,7 @@ export default function ReportPage() {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      console.log("Generated questions:", data);
+      console.log("🟢 Generated questions:", data);
       if (!Array.isArray(data)) throw new Error("Invalid response format");
       setQuestions(data);
       setCurrentIndex(0);
@@ -55,6 +69,28 @@ export default function ReportPage() {
       setCurrentIndex(currentIndex + 1);
       setSelected(null);
       setFeedback("");
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const res = await fetch("/api/log-input", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          input,
+          datetime: new Date().toISOString(),
+          row,
+        }),
+      });
+
+      console.log("📤 Log POST status:", res.status);
+      const data = await res.json();
+      console.log("📤 Log response:", data);
+    } catch (e) {
+      console.error("送信エラー:", e);
+    } finally {
+      window.location.href = "/dashboard";
     }
   };
 
@@ -109,25 +145,7 @@ export default function ReportPage() {
               <p style={{ fontWeight: 700, fontSize: "1.2rem" }}>
                 🎉 すべての問題が終了しました！
               </p>
-              <button
-                className="button"
-                onClick={async () => {
-                  try {
-                    await fetch("/api/log-input", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        input,
-                        datetime: new Date().toISOString(),
-                      }),
-                    });
-                  } catch (e) {
-                    console.error("送信エラー:", e);
-                  } finally {
-                    window.location.href = "/dashboard";
-                  }
-                }}
-              >
+              <button className="button" onClick={handleSubmit}>
                 学習記録を送信してトップに戻る
               </button>
             </div>
