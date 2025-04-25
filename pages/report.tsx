@@ -53,16 +53,26 @@ export default function ReportPage() {
     }
   };
 
-  const handleAnswer = (choice: string) => {
-    if (!currentQuestion) return;
-    setSelected(choice);
-    const isCorrect = choice === currentQuestion.correct;
-    setFeedback(
-      isCorrect
-        ? "⭕ 正解！"
-        : `❌ 不正解。正解は：${currentQuestion.correct}\n理由：${currentQuestion.explanation}`
-    );
-  };
+const handleAnswer = (choice: string) => {
+  if (!currentQuestion) return;
+
+  // インデックスから正解を取り出す
+  const correctIndex = currentQuestion.correctIndex ?? currentQuestion.correct;
+  const correctAnswer =
+    typeof correctIndex === "number"
+      ? currentQuestion.options?.[correctIndex]
+      : currentQuestion.correct;
+
+  setSelected(choice);
+  const isCorrect = choice === correctAnswer;
+
+  setFeedback(
+    isCorrect
+      ? "⭕ 正解！"
+      : `❌ 不正解。\n正解は：${correctAnswer ?? "（不明）"}\n理由：${currentQuestion.explanation}`
+  );
+};
+
 
   const handleNext = () => {
     if (currentIndex < questions.length - 1) {
