@@ -21,14 +21,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   {
     "text": "問題文",
     "options": ["選択肢A", "選択肢B", "選択肢C", "選択肢D"],
-    "correctIndex": 正解の選択肢番号（0〜3の整数）,
+    "correctIndex": 正解の選択肢番号 (0〜3),
     "explanation": "正解の簡単な理由（1〜2文）"
   },
   ...
 ]
 
 # 学習内容:
-${input}
+${input.slice(0, 500)}
 `;
 
   try {
@@ -36,13 +36,15 @@ ${input}
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.7,
+      max_tokens: 1000, // 軽量化のため追加
     });
 
     const raw = completion.choices[0].message?.content;
+    console.log("GPT raw output:", raw); // 確認用ログ
     const parsed = JSON.parse(raw || "[]");
     res.status(200).json(parsed);
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error generating questions:", error);
     res.status(500).json({ error: "Failed to generate questions" });
   }
 }
