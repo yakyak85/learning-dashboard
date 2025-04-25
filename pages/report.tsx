@@ -15,7 +15,7 @@ export default function ReportPage() {
 
   const currentQuestion = questions.length > 0 ? questions[currentIndex] : null;
 
-  // rowをURLパラメータから取得
+  // rowパラメータを取得
   useEffect(() => {
     if (router.isReady) {
       const rowParam = router.query.row;
@@ -53,26 +53,25 @@ export default function ReportPage() {
     }
   };
 
-const handleAnswer = (choice: string) => {
-  if (!currentQuestion) return;
+  const handleAnswer = (choice: string) => {
+    if (!currentQuestion) return;
 
-  // インデックスから正解を取り出す
-  const correctIndex = currentQuestion.correctIndex ?? currentQuestion.correct;
-  const correctAnswer =
-    typeof correctIndex === "number"
-      ? currentQuestion.options?.[correctIndex]
-      : currentQuestion.correct;
+    // インデックスベースと文字列ベースの両対応
+    const correctIndex = currentQuestion.correctIndex ?? currentQuestion.correct;
+    const correctAnswer =
+      typeof correctIndex === "number"
+        ? currentQuestion.options?.[correctIndex]
+        : currentQuestion.correct;
 
-  setSelected(choice);
-  const isCorrect = choice === correctAnswer;
+    setSelected(choice);
+    const isCorrect = choice === correctAnswer;
 
-  setFeedback(
-    isCorrect
-      ? "⭕ 正解！"
-      : `❌ 不正解。\n正解は：${correctAnswer ?? "（不明）"}\n理由：${currentQuestion.explanation}`
-  );
-};
-
+    setFeedback(
+      isCorrect
+        ? "⭕ 正解！"
+        : `❌ 不正解。\n正解は：${correctAnswer ?? "（不明）"}\n理由：${currentQuestion.explanation}`
+    );
+  };
 
   const handleNext = () => {
     if (currentIndex < questions.length - 1) {
@@ -131,7 +130,10 @@ const handleAnswer = (choice: string) => {
                   disabled={selected !== null}
                   className={`choice-btn ${
                     selected === choice
-                      ? choice === currentQuestion.correct
+                      ? choice ===
+                        (typeof currentQuestion.correctIndex === "number"
+                          ? currentQuestion.options?.[currentQuestion.correctIndex]
+                          : currentQuestion.correct)
                         ? "correct"
                         : "incorrect"
                       : ""
