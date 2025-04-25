@@ -10,7 +10,7 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const currentQuestion = questions[currentIndex];
+  const currentQuestion = questions.length > 0 ? questions[currentIndex] : null;
 
   const handleGenerate = async () => {
     if (!input.trim()) return;
@@ -26,6 +26,7 @@ export default function ReportPage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       console.log("Generated questions:", data);
+      if (!Array.isArray(data)) throw new Error("Invalid response format");
       setQuestions(data);
       setCurrentIndex(0);
       setSelected(null);
@@ -71,13 +72,13 @@ export default function ReportPage() {
       </button>
       {error && <p style={{ color: "red" }}>エラー: {error}</p>}
 
-      {questions.length > 0 && (
+      {currentQuestion && (
         <div>
           <h2>
             Q{currentIndex + 1}: {currentQuestion.text}
           </h2>
           <ul style={{ listStyle: "none", padding: 0 }}>
-            {currentQuestion.choices.map((choice: string, idx: number) => (
+            {(currentQuestion.options || []).map((choice: string, idx: number) => (
               <li key={idx} style={{ marginBottom: "0.5rem" }}>
                 <button
                   onClick={() => handleAnswer(choice)}
